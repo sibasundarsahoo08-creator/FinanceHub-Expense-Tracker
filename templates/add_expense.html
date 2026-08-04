@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Add Expense - FinanceHub{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="mb-7"><h1 class="text-3xl font-bold">Add Expense</h1><p class="text-slate-400">Record spending and optionally attach its receipt.</p></div>
+  <form method="POST" enctype="multipart/form-data" class="card p-7 space-y-5">
+    <div><label class="block text-sm mb-2">Description</label><input class="field" name="title" required placeholder="e.g., Grocery shopping"></div>
+    <div><label class="block text-sm mb-2">Amount (₹)</label><input class="field" type="number" step="0.01" min="0.01" name="amount" required placeholder="0.00"></div>
+    <div class="grid md:grid-cols-2 gap-5">
+      <div><label class="block text-sm mb-2">Category</label><select class="field" name="category">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select></div>
+      <div><label class="block text-sm mb-2">Payment Method</label><select class="field" name="payment_method">{% for method in payment_methods %}<option {% if method == 'PhonePe / UPI' %}selected{% endif %}>{{ method }}</option>{% endfor %}</select></div>
+    </div>
+    <div><label class="block text-sm mb-2">Date</label><input class="field" type="date" name="date" value="{{ today }}"></div>
+    <div><label class="block text-sm mb-2">Receipt (optional)</label><input class="field" type="file" name="receipt" accept=".png,.jpg,.jpeg,.webp,.pdf"><p class="text-xs text-slate-500 mt-2">PNG, JPG, WEBP or PDF; maximum 5 MB.</p></div>
+    <div><label class="block text-sm mb-2">Notes (optional)</label><textarea class="field" name="notes" rows="3" placeholder="Additional details"></textarea></div>
+    <div class="flex gap-3"><button class="btn-primary flex-1">Save Expense</button><a class="btn-secondary flex-1 text-center" href="{{ url_for('expenses') }}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

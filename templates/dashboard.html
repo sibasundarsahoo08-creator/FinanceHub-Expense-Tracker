@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - FinanceHub{% endblock %}
+{% block content %}
+<form id="monthForm"><input id="monthPicker" class="absolute w-px h-px opacity-0" type="month" name="month" value="{{ selected_month }}" onchange="this.form.submit()"></form>
+<div class="flex flex-wrap justify-between items-center gap-4 mb-7">
+  <div><h1 class="text-3xl font-bold">Financial Overview</h1><p class="text-slate-400">Income, expenses, budget and savings in one place.</p></div>
+  <div class="flex items-center gap-2"><a class="btn-secondary" href="{{ url_for('dashboard', month=previous_month) }}">←</a><button class="btn-primary" type="button" onclick="document.getElementById('monthPicker').showPicker ? document.getElementById('monthPicker').showPicker() : document.getElementById('monthPicker').click()">📅 {{ selected_month_name }}</button><a class="btn-secondary" href="{{ url_for('dashboard', month=next_month) }}">→</a></div>
+</div>
+
+{% if budget_warning %}<div class="mb-5 p-4 rounded-xl border {% if budget_remaining < 0 %}bg-red-500/10 border-red-500/30 text-red-200{% else %}bg-amber-500/10 border-amber-500/30 text-amber-200{% endif %}">{% if budget_remaining < 0 %}Budget exceeded by {{ (-budget_remaining)|inr }}.{% else %}You have used {{ budget_percent|round|int }}% of this month's budget.{% endif %}</div>{% endif %}
+
+<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+  <div class="card card-hover p-6"><p class="text-sm text-slate-400">Income</p><p class="text-3xl font-bold text-emerald-300 mt-3">{{ total_income|inr }}</p><a href="{{ url_for('income') }}" class="text-xs text-emerald-400 mt-2 inline-block">Manage income →</a></div>
+  <div class="card card-hover p-6"><p class="text-sm text-slate-400">Expenses</p><p class="text-3xl font-bold mt-3">{{ total_spent|inr }}</p><p class="text-xs text-slate-500 mt-2">{{ expense_count }} transactions</p></div>
+  <div class="card card-hover p-6"><p class="text-sm text-slate-400">Available Balance</p><p class="text-3xl font-bold mt-3 {% if balance < 0 %}text-red-300{% else %}text-blue-300{% endif %}">{{ balance|inr }}</p><p class="text-xs text-slate-500 mt-2">Income minus expenses</p></div>
+  <div class="card card-hover p-6"><p class="text-sm text-slate-400">Monthly Budget</p><p class="text-3xl font-bold mt-3">{{ budget_total|inr }}</p><div class="mt-3 h-2 bg-slate-700 rounded-full overflow-hidden"><div class="h-full {% if budget_percent >= 100 %}bg-red-500{% elif budget_percent >= 80 %}bg-amber-500{% else %}bg-purple-500{% endif %}" style="width: {{ budget_percent }}%"></div></div><a href="{{ url_for('budgets', month=selected_month) }}" class="text-xs text-purple-300 mt-2 inline-block">Set budget →</a></div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6 mb-6">
+  <div class="card p-6"><h2 class="font-bold mb-4">Spending by Category</h2>{% if category_labels %}<canvas id="categoryChart"></canvas>{% else %}<p class="text-slate-500 py-14 text-center">No expenses this month.</p>{% endif %}</div>
+  <div class="card p-6"><h2 class="font-bold mb-4">Payment Methods</h2>{% if payment_labels %}<canvas id="paymentChart"></canvas>{% else %}<p class="text-slate-500 py-14 text-center">No payment data.</p>{% endif %}</div>
+  <div class="card p-6"><h2 class="font-bold mb-4">Six-Month Trend</h2>{% if month_labels %}<canvas id="trendChart"></canvas>{% else %}<p class="text-slate-500 py-14 text-center">No trend data.</p>{% endif %}</div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 card overflow-hidden">
+    <div class="p-5 border-b border-slate-700/50 flex justify-between"><div><h2 class="font-bold">Recent Expenses</h2><p class="text-xs text-slate-500">{{ selected_month_name }}</p></div><a class="text-purple-300 text-sm" href="{{ url_for('expenses') }}">View all →</a></div>
+    {% for e in recent_expenses %}<div class="p-4 border-b border-slate-700/40 flex items-center justify-between gap-4"><div><p class="font-semibold">{{ e.title }}</p><div class="flex flex-wrap gap-2 mt-1"><span class="text-xs text-purple-300">{{ e.category }}</span><span class="text-xs text-blue-300">{{ e.payment_method or 'Cash' }}</span><span class="text-xs text-slate-500">{{ e.date }}</span>{% if e.receipt_filename %}<a class="text-xs text-pink-300" target="_blank" href="{{ url_for('receipt_file', filename=e.receipt_filename) }}">Receipt</a>{% endif %}</div></div><p class="font-bold">{{ e.amount|inr }}</p></div>{% else %}<p class="p-10 text-center text-slate-500">No expenses this month.</p>{% endfor %}
+  </div>
+  <div class="card p-5"><div class="flex justify-between mb-4"><h2 class="font-bold">Savings Goals</h2><a class="text-purple-300 text-sm" href="{{ url_for('goals') }}">Manage</a></div>{% for goal in goals %}{% set percent = ([goal.current_amount / goal.target_amount * 100, 100]|min) %}<div class="mb-5"><div class="flex justify-between text-sm"><span>{{ goal.name }}</span><span>{{ percent|round|int }}%</span></div><div class="h-2 bg-slate-700 rounded-full mt-2"><div class="h-full bg-emerald-500 rounded-full" style="width: {{ percent }}%"></div></div><p class="text-xs text-slate-500 mt-1">{{ goal.current_amount|inr }} of {{ goal.target_amount|inr }}</p></div>{% else %}<p class="text-slate-500 py-8 text-center">No savings goals yet.</p>{% endfor %}</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+Chart.defaults.color='#94a3b8'; Chart.defaults.borderColor='#334155';
+const colors=['#8b5cf6','#ec4899','#3b82f6','#14b8a6','#f59e0b','#ef4444','#22c55e','#6366f1'];
+{% if category_labels %}new Chart(document.getElementById('categoryChart'),{type:'doughnut',data:{labels:{{ category_labels|tojson }},datasets:[{data:{{ category_values|tojson }},backgroundColor:colors,borderWidth:0}]},options:{plugins:{legend:{position:'bottom'}}}});{% endif %}
+{% if payment_labels %}new Chart(document.getElementById('paymentChart'),{type:'pie',data:{labels:{{ payment_labels|tojson }},datasets:[{data:{{ payment_values|tojson }},backgroundColor:colors.slice(2),borderWidth:0}]},options:{plugins:{legend:{position:'bottom'}}}});{% endif %}
+{% if month_labels %}new Chart(document.getElementById('trendChart'),{type:'bar',data:{labels:{{ month_labels|tojson }},datasets:[{data:{{ month_values|tojson }},backgroundColor:'#8b5cf6',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}}}});{% endif %}
+</script>
+{% endblock %}

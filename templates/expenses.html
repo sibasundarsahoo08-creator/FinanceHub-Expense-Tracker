@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Expenses - FinanceHub{% endblock %}
+{% block content %}
+<div class="flex flex-wrap justify-between gap-4 items-end mb-7">
+  <div><h1 class="text-3xl font-bold">Expenses</h1><p class="text-slate-400">Search, filter, export and manage every expense.</p></div>
+  <a class="btn-primary" href="{{ url_for('add_expense') }}">+ Add Expense</a>
+</div>
+
+<form method="GET" class="card p-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <input class="field" name="search" value="{{ filters.search }}" placeholder="Search description or notes">
+  <select class="field" name="category"><option value="">All Categories</option>{% for c in categories %}<option value="{{ c }}" {% if filters.category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+  <select class="field" name="payment_method"><option value="">All Payment Methods</option>{% for method in payment_methods %}<option value="{{ method }}" {% if filters.payment_method == method %}selected{% endif %}>{{ method }}</option>{% endfor %}</select>
+  <div class="flex gap-2"><input class="field" type="date" name="start_date" value="{{ filters.start_date }}" title="Start date"><input class="field" type="date" name="end_date" value="{{ filters.end_date }}" title="End date"></div>
+  <input class="field" type="number" step="0.01" name="min_amount" value="{{ filters.min_amount }}" placeholder="Minimum amount">
+  <input class="field" type="number" step="0.01" name="max_amount" value="{{ filters.max_amount }}" placeholder="Maximum amount">
+  <button class="btn-primary">Apply Filters</button>
+  <a class="btn-secondary text-center" href="{{ url_for('expenses') }}">Clear Filters</a>
+</form>
+
+<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+  <p class="text-slate-300"><span class="font-bold text-white">{{ expenses|length }}</span> records · Total <span class="font-bold text-white">{{ total|inr }}</span></p>
+  <div class="flex gap-2 text-sm">
+    <a class="btn-secondary" href="{{ url_for('export_expenses', file_type='csv', **request.args) }}">CSV</a>
+    <a class="btn-secondary" href="{{ url_for('export_expenses', file_type='xlsx', **request.args) }}">Excel</a>
+    <a class="btn-secondary" href="{{ url_for('export_expenses', file_type='pdf', **request.args) }}">PDF</a>
+  </div>
+</div>
+
+<div class="card overflow-hidden">
+{% if expenses %}
+  <div class="overflow-x-auto"><table class="w-full min-w-[900px]">
+    <thead class="bg-slate-950/50 text-slate-300 text-sm"><tr><th class="text-left p-4">Description</th><th class="text-left p-4">Category</th><th class="text-left p-4">Payment</th><th class="text-left p-4">Date</th><th class="text-right p-4">Amount</th><th class="text-center p-4">Actions</th></tr></thead>
+    <tbody class="divide-y divide-slate-700/50">
+    {% for e in expenses %}
+    <tr class="hover:bg-slate-800/60">
+      <td class="p-4"><p class="font-semibold">{{ e.title }}</p>{% if e.notes %}<p class="text-xs text-slate-500 mt-1">{{ e.notes }}</p>{% endif %}{% if e.receipt_filename %}<a class="text-xs text-purple-300" target="_blank" href="{{ url_for('receipt_file', filename=e.receipt_filename) }}">View receipt</a>{% endif %}</td>
+      <td class="p-4"><span class="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-300">{{ e.category }}</span></td>
+      <td class="p-4"><span class="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300">{{ e.payment_method or 'Cash' }}</span></td>
+      <td class="p-4 text-sm text-slate-400">{{ (e.date|to_date).strftime('%d %b %Y') }}</td>
+      <td class="p-4 text-right font-bold">{{ e.amount|inr }}</td>
+      <td class="p-4"><div class="flex justify-center gap-3 text-sm"><a class="text-purple-300" href="{{ url_for('edit_expense', expense_id=e.id) }}">Edit</a><form method="POST" action="{{ url_for('delete_expense', expense_id=e.id) }}" onsubmit="return confirm('Delete this expense?')"><button class="text-red-300">Delete</button></form></div></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+{% else %}<div class="p-14 text-center text-slate-400">No expenses match your filters.</div>{% endif %}
+</div>
+{% endblock %}
